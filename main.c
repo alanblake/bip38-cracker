@@ -293,6 +293,7 @@ void coderoll(char * currentPass) {
     pthread_mutex_unlock(&coderoll_mutex);
 }
 
+// numeric pins
 void coderoll2(char *pass) {
     static int pin = 0000;
     // make a random 4-character password
@@ -306,12 +307,41 @@ void coderoll2(char *pass) {
     pthread_mutex_unlock(&coderoll_mutex);
 }
 
+// one byte printable UTF-8 -- that is, 32 <= c <= 127
+void coderoll3(char *pass) {
+    static unsigned char pin[] = { ' ', ' ', ' ', ' ', 0 };
+    pthread_mutex_lock(&coderoll_mutex);
+    number_tested ++;
+    strcpy(pass, pin);
+    do {
+        if ((++pin[3]) == 0x80) {
+            pin[3] = ' ';
+            if ((++pin[2]) == 0x80) {
+                pin[2] = ' ';
+                if ((++pin[1]) == 0x80) {
+                    pin[1] = ' ';
+                    if ((++pin[0]) == 0x80) {
+                        exit(1);
+                    }
+                }
+            }
+        }
+    } while (pin[0] >= '0' && pin[0] <= '9' &&
+             pin[1] >= '0' && pin[1] <= '9' &&
+             pin[2] >= '0' && pin[2] <= '9' &&
+             pin[3] >= '0' && pin[3] <= '9');
+    if(number_tested % 10 == 0) {
+        printf("total tested: %lu, current code: %s\r\n",number_tested, pass);
+    }
+    pthread_mutex_unlock(&coderoll_mutex);
+}
+
 void * crackthread(void * ctx) {
     const char * pKey;
     char currentPass[6];
     pKey = (const char *)ctx;
     while(true) {
-        coderoll2(currentPass);
+        coderoll3(currentPass);
         if(!crack(pKey, currentPass)) {
             printf("found password: %s\r\n",currentPass);
             exit(0);
