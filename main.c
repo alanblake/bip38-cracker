@@ -335,13 +335,55 @@ void coderoll3(char *pass) {
     }
     pthread_mutex_unlock(&coderoll_mutex);
 }
+// a bitcoin quantity
+void coderoll4(char *pass) {
+    // from https://en.bitcoin.it/wiki/Bitcoin_symbol
+    // http://fortawesome.github.io/Font-Awesome/icon/btc/
+#define ALPHABET_SIZE 23
+    static const char *alphabet[ALPHABET_SIZE] = {
+        "\xef\x85\x9a",  // '\uf15a'
+        "B\xe2\x83\xa6", // 'B\u20e6' (COMBINING DOUBLE VERTICAL STROKE OVERLAY)
+        "\xE0\xB8\xBF",  // '\u0e3f' (THAI CURRENCY SYMBOL BAHT)
+        "\xc9\x83", // '\u0243' (LATIN CAPITAL LETTER B WITH STROKE)
+        "\xe1\x97\xb8", // '\u15f8' (CANADIAN SYLLABICS CARRIER KHEE)
+        "B\xe2\x83\xab", // 'B\u20EB' (COMBINING LONG DOUBLE SOLIDUS OVERLAY)
+        "\xe2\x92\xb7", // '\u24b7' (CIRCLED LATIN CAPITAL LETTER B)
+        "\xe2\x93\x91", // '\u24d1' (CIRCLED LATIN SMALL LETTER B)
+        "\xe1\xb4\x83", // '\u1d03' (LATIN LETTER SMALL CAPITAL BARRED B)
+        "\xe2\x93\xa2", // '\u24e2' (CIRCLED LATIN SMALL LETTER S)
+        "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+        ".", " ", "!"
+    };
+    static int code = 0;
+
+    pthread_mutex_lock(&coderoll_mutex);
+    number_tested ++;
+
+    do {
+        char *p = pass;
+        int n = code++, i;
+        for (i=0; i<4; i++) {
+            strcpy(p, alphabet[n % ALPHABET_SIZE]);
+            p += strlen(p);
+            n = n / ALPHABET_SIZE;
+        }
+        if (n != 0) { exit(1); }
+    } while (pass[0] >= '0' && pass[0] <= '9' &&
+             pass[1] >= '0' && pass[1] <= '9' &&
+             pass[2] >= '0' && pass[2] <= '9' &&
+             pass[3] >= '0' && pass[3] <= '9');
+    if(number_tested % 10 == 0) {
+        printf("total tested: %lu, current code: %s [%d]\r\n",number_tested, pass, code);
+    }
+    pthread_mutex_unlock(&coderoll_mutex);
+}
 
 void * crackthread(void * ctx) {
     const char * pKey;
-    char currentPass[6];
+    char currentPass[17];
     pKey = (const char *)ctx;
     while(true) {
-        coderoll3(currentPass);
+        coderoll4(currentPass);
         if(!crack(pKey, currentPass)) {
             printf("found password: %s\r\n",currentPass);
             exit(0);
