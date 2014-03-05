@@ -165,7 +165,7 @@ int main(int argc, char **argv)
 	key_data_len = strlen(argv[1]);
 
 	/* gen key and iv. init the cipher ctx object */
-	if (aes_init
+	if (!aes_init
 	    (key_data, key_data_len, (unsigned char *) &salt, &en, &de)) {
 		printf("Couldn't initialize AES cipher\n");
 		return -1;
@@ -175,7 +175,7 @@ int main(int argc, char **argv)
 	for (i = 0; input[i]; i++) {
 		char *plaintext;
 		unsigned char *ciphertext;
-		int olen, len;
+		size_t olen, len;
 
 		/* The enc/dec functions deal with binary data and not C strings. strlen() will
 		   return length of the string without counting the '\0' string marker. We always

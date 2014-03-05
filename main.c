@@ -4,6 +4,7 @@
 
 */
 
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -34,7 +35,7 @@ void print_hex(char * hex, size_t len) {
 #define ADDRESSHASH_SIZE 4
 #define OWNERSALT_SIZE 8
 
-int crack(char * pKey, char * pKey_pass) {
+int crack(const char * pKey, char * pKey_pass) {
     int i;
     uint8_t passfactor[PASSFACTOR_SIZE];
 
@@ -141,30 +142,37 @@ int crack(char * pKey, char * pKey_pass) {
     EVP_CIPHER_CTX d;
     EVP_CIPHER_CTX_init(&d);
     EVP_DecryptInit_ex(&d, EVP_aes_256_ecb(), NULL, derivedhalf2, iv);
+    EVP_CIPHER_CTX_set_padding(&d, 0);
 
     unsigned char unencryptedpart2[32];
     int decrypt_len;
     EVP_DecryptUpdate(&d, unencryptedpart2, &decrypt_len, encryptedpart2, 16);
-    EVP_DecryptUpdate(&d, unencryptedpart2, &decrypt_len, encryptedpart2, 16);
+    assert(decrypt_len == 16);
     for(i=0; i<16; i++) {
         unencryptedpart2[i] ^= derived[i + 16];
     }
     unsigned char unencryptedpart1[32];
     memcpy(encryptedpart1+8, unencryptedpart2, 8);
+
     EVP_DecryptUpdate(&d, unencryptedpart1, &decrypt_len, encryptedpart1, 16);
-    EVP_DecryptUpdate(&d, unencryptedpart1, &decrypt_len, encryptedpart1, 16);
+    assert(decrypt_len == 16);
     for(i=0; i<16; i++) {
         unencryptedpart1[i] ^= derived[i];
     }
 
-    // recoved seedb
+    EVP_DecryptFinal_ex(&d, unencryptedpart1+decrypt_len, &decrypt_len);
+    EVP_CIPHER_CTX_cleanup(&d);
+
+    // recover seedb
     unsigned char seedb[24];
     memcpy(seedb, unencryptedpart1, 16);
     memcpy(&(seedb[16]), &(unencryptedpart2[8]), 8);
 
     // turn seedb into factorb (factorb = SHA256(SHA256(seedb)))
     unsigned char factorb[32];
+    //printf("seedb:   "); print_hex(seedb, 24); printf("\n");
     bu_Hash(factorb, seedb, 24);
+    //printf("factorb: "); print_hex(factorb, 32); printf("\n");
 
     // multiply by passfactor (ec_point_pub)
     const EC_GROUP * ec_group = EC_KEY_get0_group(ec_point.k);
@@ -206,12 +214,13 @@ int crack(char * pKey, char * pKey_pass) {
         fprintf(stderr,"%s","cannot init wallet key");
         exit(10);
     }
+    EC_KEY_set_conv_form(wallet.k, POINT_CONVERSION_UNCOMPRESSED);
 
+    /*
     unsigned char * pubKey;
     size_t pubKeylen;
     bp_pubkey_get(&wallet, ((void **) &pubKey), &pubKeylen);
 
-    /*
     printf("pubkey len: %d hex: ",pubKeylen);
     print_hex(pubKey,pubKeylen);
     printf("%s","\r\n");
@@ -235,6 +244,8 @@ int crack(char * pKey, char * pKey_pass) {
         printf("!!hash match found!!\r\n");
         printf("!!  key is %s  !!\r\n", pKey_pass);
         printf("!!!!!!!!!!!!!!!!!!!!\r\n");
+        print_hex(pKey_pass, strlen(pKey_pass));
+        printf("\r\n!!!!!!!!!!!!!!!!!!!!\r\n");
         return 0;
     }
 
@@ -279,12 +290,24 @@ void coderoll(char * currentPass) {
     pthread_mutex_unlock(&coderoll_mutex);
 }
 
+void coderoll2(char *pass) {
+    static int pin = 0000;
+    // make a random 4-character password
+    pthread_mutex_lock(&coderoll_mutex);
+    if(number_tested % 10 == 0) {
+        printf("total tested: %lu, current code: %s\r\n",number_tested, pass);
+    }
+    number_tested ++;
+    sprintf(pass, "%04d", pin++);
+    pthread_mutex_unlock(&coderoll_mutex);
+}
+
 void * crackthread(void * ctx) {
-    char * pKey;
+    const char * pKey;
     char currentPass[6];
-    pKey = (char *)ctx;
+    pKey = (const char *)ctx;
     while(true) {
-        coderoll(currentPass);
+        coderoll2(currentPass);
         if(!crack(pKey, currentPass)) {
             printf("found password: %s\r\n",currentPass);
             exit(0);
@@ -297,6 +320,7 @@ int main(int argc, char * argv[]) {
     pthread_t threads[NUM_THREADS];
     number_tested = 0;
     printf("casascius bip38 private key brute forcer\r\n");
+    OpenSSL_add_all_algorithms();
 
     /* takes a single command line arg. */
     /* if passed in, this is the starting string to check instead of AaAaA */
@@ -307,20 +331,26 @@ int main(int argc, char * argv[]) {
     }
 
     /* make sure the crack function is working */
-    /*if(crack("6PfLGnQs6VZnrNpmVKfjotbnQuaJK4KZoPFrAjx1JMJUa1Ft8gnf5WxfKd","Satoshi")){
-    	fprintf(stderr,"the crack function is not working, sorry.");
-    }*/
+    if(crack("6PfLGnQs6VZnrNpmVKfjotbnQuaJK4KZoPFrAjx1JMJUa1Ft8gnf5WxfKd","Satoshi")){
+    	fprintf(stderr,"the crack function is not working, sorry.\n");
+        exit(1);
+    }
 
     /* the target encrypted private key to crack. */
     //const char pKey[] = "6PfTokDpyZUYwaVg37aZZ67MvD1bTyrCyjrjacz1XAgfVndWjZSsxLuDrE"; // official Casascius contest key
+    const char pKey[] = "6PfQoEzqbz3i2LpHibYnwAspwBwa3Nei1rU7UH9yzfutXT7tyUzV8aYAvG"; // reddit contest key
+    //const char pKey[] = "6PfMxA1n3cqYarHoDqPRPLpBBJGWLDY1qX94z8Qyjg7XAMNZJMvHLqAMyS"; // test key that decrypts with AaAaJ
 
-    const char pKey[] = "6PfMxA1n3cqYarHoDqPRPLpBBJGWLDY1qX94z8Qyjg7XAMNZJMvHLqAMyS"; // test key that decrypts with AaAaJ
     pthread_mutex_t coderoll_mutex = PTHREAD_MUTEX_INITIALIZER;
 
     for(i=0; i < NUM_THREADS; i++) {
         pthread_create(&threads[i], NULL, crackthread, (void *)pKey);
     }
 
+    for(i=0; i < NUM_THREADS; i++) {
+        pthread_join(threads[i], NULL);
+    }
     pthread_exit(NULL);
+    EVP_cleanup();
     return 0;
 }

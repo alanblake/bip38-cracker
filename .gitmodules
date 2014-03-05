@@ -1,0 +1,3 @@
+[submodule "picocoin"]
+	path = picocoin
+	url = https://github.com/jgarzik/picocoin
