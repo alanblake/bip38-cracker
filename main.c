@@ -2,6 +2,9 @@
 
    https://bitcointalk.org/index.php?topic=128699.0
 
+Repurposed for reddit contest:
+
+   http://www.reddit.com/r/Bitcoin/comments/1zkcya/lets_see_how_long_it_takes_to_crack_a_4_digit/
 */
 
 #include <assert.h>
@@ -14,7 +17,7 @@
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 #include <pthread.h>
-#include "scrypt/crypto/crypto_scrypt.h"
+#include "scrypt-jane.h"
 #include "ccoin/base58.h"
 #include "ccoin/key.h"
 #include "ccoin/address.h"
@@ -57,9 +60,9 @@ int crack(const char * pKey, char * pKey_pass) {
         printf("\r\n");
         */
         memset(passfactor,0,PASSFACTOR_SIZE);
-        crypto_scrypt( pKey_pass, strlen(pKey_pass),
-                       &(b58dec->str[3+ADDRESSHASH_SIZE]), OWNERSALT_SIZE,
-                       16384, 8, 8, passfactor, PASSFACTOR_SIZE );
+        scrypt( pKey_pass, strlen(pKey_pass),
+                &(b58dec->str[3+ADDRESSHASH_SIZE]), OWNERSALT_SIZE,
+                13 /*16384*/, 3 /*8*/, 3 /*8*/, passfactor, PASSFACTOR_SIZE );
         /*
         printf("%s", "passfactor: ");
         print_hex(passfactor, PASSFACTOR_SIZE);
@@ -129,9 +132,9 @@ int crack(const char * pKey, char * pKey_pass) {
            &b58dec->str[3], ADDRESSHASH_SIZE); // copy the addresshash
     memcpy(derived_scrypt_salt+ADDRESSHASH_SIZE,
            &b58dec->str[3+ADDRESSHASH_SIZE], OWNERSALT_SIZE); // copy the ownersalt
-    crypto_scrypt( passpoint, passpoint_len,
-                   derived_scrypt_salt, ADDRESSHASH_SIZE+OWNERSALT_SIZE,
-                   1024, 1, 1, derived, DERIVED_SIZE );
+    scrypt( passpoint, passpoint_len,
+            derived_scrypt_salt, ADDRESSHASH_SIZE+OWNERSALT_SIZE,
+            9/*1024*/, 0/*1*/, 0/*1*/, derived, DERIVED_SIZE );
 
     //get decryption key
     unsigned char derivedhalf2[DERIVED_SIZE/2];
@@ -294,11 +297,12 @@ void coderoll2(char *pass) {
     static int pin = 0000;
     // make a random 4-character password
     pthread_mutex_lock(&coderoll_mutex);
+    number_tested ++;
+    sprintf(pass, "%04d", pin++);
+    if (pin>9999) { pin = 0000; }
     if(number_tested % 10 == 0) {
         printf("total tested: %lu, current code: %s\r\n",number_tested, pass);
     }
-    number_tested ++;
-    sprintf(pass, "%04d", pin++);
     pthread_mutex_unlock(&coderoll_mutex);
 }
 

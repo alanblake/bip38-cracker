@@ -93,10 +93,12 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_cracker_OBJECTS = main.$(OBJEXT) crypto_scrypt-ref.$(OBJEXT) \
-	sha256.$(OBJEXT)
+am_cracker_OBJECTS = cracker-main.$(OBJEXT) \
+	cracker-scrypt-jane.$(OBJEXT)
 cracker_OBJECTS = $(am_cracker_OBJECTS)
 cracker_DEPENDENCIES = picocoin/lib/libccoin.a
+cracker_LINK = $(CCLD) $(cracker_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
+	$(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -274,16 +276,18 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-INCLUDES = @GLIB_CFLAGS@ -Ipicocoin/include -Iscrypt/util -Iscrypt/crypto -Iscrypt -O0 -g
+INCLUDES = @GLIB_CFLAGS@ -Ipicocoin/include -Iscrypt-jane
+cracker_CFLAGS = -O3 -m32 -DSCRYPT_SALSA -DSCRYPT_SHA256
 cracker_SOURCES = \
 	main.c \
-	scrypt/crypto/crypto_scrypt-ref.c \
-	scrypt/crypto/sha256.c
+	scrypt-jane/scrypt-jane.c
 
 
+# OLD scrypt implementation:
 # choose either sse or non-sse (ref) for above. SSE gives some speedup.
 #	scrypt/crypto/crypto_scrypt-sse.c
 #	scrypt/crypto/crypto_scrypt-ref.c
+#       scrypt/crypto/sha256.c
 cracker_LDADD = picocoin/lib/libccoin.a @GLIB_LIBS@ @CRYPTO_LIBS@ -lpthread
 all: all-am
 
@@ -368,7 +372,7 @@ clean-binPROGRAMS:
 
 cracker$(EXEEXT): $(cracker_OBJECTS) $(cracker_DEPENDENCIES) $(EXTRA_cracker_DEPENDENCIES) 
 	@rm -f cracker$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(cracker_OBJECTS) $(cracker_LDADD) $(LIBS)
+	$(AM_V_CCLD)$(cracker_LINK) $(cracker_OBJECTS) $(cracker_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -376,9 +380,8 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/crypto_scrypt-ref.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sha256.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cracker-main.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cracker-scrypt-jane.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -394,33 +397,33 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
-crypto_scrypt-ref.o: scrypt/crypto/crypto_scrypt-ref.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT crypto_scrypt-ref.o -MD -MP -MF $(DEPDIR)/crypto_scrypt-ref.Tpo -c -o crypto_scrypt-ref.o `test -f 'scrypt/crypto/crypto_scrypt-ref.c' || echo '$(srcdir)/'`scrypt/crypto/crypto_scrypt-ref.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/crypto_scrypt-ref.Tpo $(DEPDIR)/crypto_scrypt-ref.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='scrypt/crypto/crypto_scrypt-ref.c' object='crypto_scrypt-ref.o' libtool=no @AMDEPBACKSLASH@
+cracker-main.o: main.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cracker_CFLAGS) $(CFLAGS) -MT cracker-main.o -MD -MP -MF $(DEPDIR)/cracker-main.Tpo -c -o cracker-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/cracker-main.Tpo $(DEPDIR)/cracker-main.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='main.c' object='cracker-main.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o crypto_scrypt-ref.o `test -f 'scrypt/crypto/crypto_scrypt-ref.c' || echo '$(srcdir)/'`scrypt/crypto/crypto_scrypt-ref.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cracker_CFLAGS) $(CFLAGS) -c -o cracker-main.o `test -f 'main.c' || echo '$(srcdir)/'`main.c
 
-crypto_scrypt-ref.obj: scrypt/crypto/crypto_scrypt-ref.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT crypto_scrypt-ref.obj -MD -MP -MF $(DEPDIR)/crypto_scrypt-ref.Tpo -c -o crypto_scrypt-ref.obj `if test -f 'scrypt/crypto/crypto_scrypt-ref.c'; then $(CYGPATH_W) 'scrypt/crypto/crypto_scrypt-ref.c'; else $(CYGPATH_W) '$(srcdir)/scrypt/crypto/crypto_scrypt-ref.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/crypto_scrypt-ref.Tpo $(DEPDIR)/crypto_scrypt-ref.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='scrypt/crypto/crypto_scrypt-ref.c' object='crypto_scrypt-ref.obj' libtool=no @AMDEPBACKSLASH@
+cracker-main.obj: main.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cracker_CFLAGS) $(CFLAGS) -MT cracker-main.obj -MD -MP -MF $(DEPDIR)/cracker-main.Tpo -c -o cracker-main.obj `if test -f 'main.c'; then $(CYGPATH_W) 'main.c'; else $(CYGPATH_W) '$(srcdir)/main.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/cracker-main.Tpo $(DEPDIR)/cracker-main.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='main.c' object='cracker-main.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o crypto_scrypt-ref.obj `if test -f 'scrypt/crypto/crypto_scrypt-ref.c'; then $(CYGPATH_W) 'scrypt/crypto/crypto_scrypt-ref.c'; else $(CYGPATH_W) '$(srcdir)/scrypt/crypto/crypto_scrypt-ref.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cracker_CFLAGS) $(CFLAGS) -c -o cracker-main.obj `if test -f 'main.c'; then $(CYGPATH_W) 'main.c'; else $(CYGPATH_W) '$(srcdir)/main.c'; fi`
 
-sha256.o: scrypt/crypto/sha256.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT sha256.o -MD -MP -MF $(DEPDIR)/sha256.Tpo -c -o sha256.o `test -f 'scrypt/crypto/sha256.c' || echo '$(srcdir)/'`scrypt/crypto/sha256.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/sha256.Tpo $(DEPDIR)/sha256.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='scrypt/crypto/sha256.c' object='sha256.o' libtool=no @AMDEPBACKSLASH@
+cracker-scrypt-jane.o: scrypt-jane/scrypt-jane.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cracker_CFLAGS) $(CFLAGS) -MT cracker-scrypt-jane.o -MD -MP -MF $(DEPDIR)/cracker-scrypt-jane.Tpo -c -o cracker-scrypt-jane.o `test -f 'scrypt-jane/scrypt-jane.c' || echo '$(srcdir)/'`scrypt-jane/scrypt-jane.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/cracker-scrypt-jane.Tpo $(DEPDIR)/cracker-scrypt-jane.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='scrypt-jane/scrypt-jane.c' object='cracker-scrypt-jane.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o sha256.o `test -f 'scrypt/crypto/sha256.c' || echo '$(srcdir)/'`scrypt/crypto/sha256.c
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cracker_CFLAGS) $(CFLAGS) -c -o cracker-scrypt-jane.o `test -f 'scrypt-jane/scrypt-jane.c' || echo '$(srcdir)/'`scrypt-jane/scrypt-jane.c
 
-sha256.obj: scrypt/crypto/sha256.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT sha256.obj -MD -MP -MF $(DEPDIR)/sha256.Tpo -c -o sha256.obj `if test -f 'scrypt/crypto/sha256.c'; then $(CYGPATH_W) 'scrypt/crypto/sha256.c'; else $(CYGPATH_W) '$(srcdir)/scrypt/crypto/sha256.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/sha256.Tpo $(DEPDIR)/sha256.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='scrypt/crypto/sha256.c' object='sha256.obj' libtool=no @AMDEPBACKSLASH@
+cracker-scrypt-jane.obj: scrypt-jane/scrypt-jane.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cracker_CFLAGS) $(CFLAGS) -MT cracker-scrypt-jane.obj -MD -MP -MF $(DEPDIR)/cracker-scrypt-jane.Tpo -c -o cracker-scrypt-jane.obj `if test -f 'scrypt-jane/scrypt-jane.c'; then $(CYGPATH_W) 'scrypt-jane/scrypt-jane.c'; else $(CYGPATH_W) '$(srcdir)/scrypt-jane/scrypt-jane.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/cracker-scrypt-jane.Tpo $(DEPDIR)/cracker-scrypt-jane.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='scrypt-jane/scrypt-jane.c' object='cracker-scrypt-jane.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o sha256.obj `if test -f 'scrypt/crypto/sha256.c'; then $(CYGPATH_W) 'scrypt/crypto/sha256.c'; else $(CYGPATH_W) '$(srcdir)/scrypt/crypto/sha256.c'; fi`
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(cracker_CFLAGS) $(CFLAGS) -c -o cracker-scrypt-jane.obj `if test -f 'scrypt-jane/scrypt-jane.c'; then $(CYGPATH_W) 'scrypt-jane/scrypt-jane.c'; else $(CYGPATH_W) '$(srcdir)/scrypt-jane/scrypt-jane.c'; fi`
 
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique

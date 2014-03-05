@@ -1,7 +1,7 @@
 AC_INIT(cracker,0.1,paybitcoin)
 AC_PREREQ(2.52)
 AC_CONFIG_SRCDIR([main.c])
-AM_INIT_AUTOMAKE([gnu])
+AM_INIT_AUTOMAKE([gnu subdir-objects])
 
 AM_MAINTAINER_MODE
 
