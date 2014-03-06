@@ -412,7 +412,11 @@ int coderoll(char *pass) {
 
 // dictionary words [done]
 int coderoll(char *pass) {
-#include "words.h"
+#if 0
+# include "words.h"
+#else
+# include "dogewords.h"
+#endif
     static int index = 0;
     int n = index++;
     if (!words[n]) { exit(1); }
