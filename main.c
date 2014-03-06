@@ -520,6 +520,12 @@ int coderoll(char *pass) {
  done:
     // initial startup
     if (counter < STARTVALUE) { goto again; }
+    // skip all-numeric passwords
+    for (i=0;i<PLEN;i++) {
+        char c = code[i]+32;
+        if (c<'0' || c>'9') break;
+    }
+    if (i==PLEN) { goto again; } // we already searched these in KEYSPACE 1
     // convert array of unicode values into utf8
     char *p = pass;
     for (i=0; i<PLEN; i++) {
