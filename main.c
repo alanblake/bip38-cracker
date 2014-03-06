@@ -255,16 +255,15 @@ int crack(const char * pKey, char * pKey_pass) {
     return 1;
 }
 
-char pass[6]; // the current password being checked
 pthread_mutex_t coderoll_mutex;
 long unsigned int number_tested;
 
+#define KEYSPACE 6
+
+// 5-character password for AaAaJ test vector
+#if KEYSPACE == 0
 void coderoll(char * currentPass) {
-    pthread_mutex_lock(&coderoll_mutex);
-    if(number_tested % 10 == 0) {
-        printf("total tested: %lu, current code: %s\r\n",number_tested, pass);
-    }
-    number_tested ++;
+    static char pass[6] = { "AaAaA" }; // the current password being checked
     pass[4]++;
     if(pass[4] > 'Z') {
         pass[4] = 'A';
@@ -290,28 +289,25 @@ void coderoll(char * currentPass) {
         }
     }
     strcpy(currentPass,pass);
-    pthread_mutex_unlock(&coderoll_mutex);
+    return -1;
 }
 
-// numeric pins
-void coderoll2(char *pass) {
+#elif KEYSPACE == 1
+
+// numeric pins [done]
+void coderoll(char *pass) {
     static int pin = 0000;
     // make a random 4-character password
-    pthread_mutex_lock(&coderoll_mutex);
-    number_tested ++;
     sprintf(pass, "%04d", pin++);
-    if (pin>9999) { pin = 0000; }
-    if(number_tested % 10 == 0) {
-        printf("total tested: %lu, current code: %s\r\n",number_tested, pass);
-    }
-    pthread_mutex_unlock(&coderoll_mutex);
+    if (pin>9999) { exit(1); }
+    return pin;
 }
 
+#elif KEYSPACE == 2
+
 // one byte printable UTF-8 -- that is, 32 <= c <= 127
-void coderoll3(char *pass) {
-    static unsigned char pin[] = { ' ', ' ', ' ', ' ', 0 };
-    pthread_mutex_lock(&coderoll_mutex);
-    number_tested ++;
+void coderoll(char *pass) {
+    static unsigned char pin[] = { ' ', ' ', '%', 'o', 0 };
     strcpy(pass, pin);
     do {
         if ((++pin[3]) == 0x80) {
@@ -330,13 +326,13 @@ void coderoll3(char *pass) {
              pin[1] >= '0' && pin[1] <= '9' &&
              pin[2] >= '0' && pin[2] <= '9' &&
              pin[3] >= '0' && pin[3] <= '9');
-    if(number_tested % 10 == 0) {
-        printf("total tested: %lu, current code: %s\r\n",number_tested, pass);
-    }
-    pthread_mutex_unlock(&coderoll_mutex);
+    return -1;
 }
+
+#elif KEYSPACE == 3
+
 // a bitcoin quantity
-void coderoll4(char *pass) {
+void coderoll(char *pass) {
     // from https://en.bitcoin.it/wiki/Bitcoin_symbol
     // http://fortawesome.github.io/Font-Awesome/icon/btc/
 #define ALPHABET_SIZE 23
@@ -356,8 +352,44 @@ void coderoll4(char *pass) {
     };
     static int code = 0;
 
-    pthread_mutex_lock(&coderoll_mutex);
-    number_tested ++;
+    do {
+        char *p = pass;
+        int n = code++, i;
+        for (i=0; i<4; i++) {
+            strcpy(p, alphabet[n % ALPHABET_SIZE]);
+            p += strlen(p);
+            n = n / ALPHABET_SIZE;
+        }
+        if (n != 0) { exit(1); }
+    } while (pass[0] >= '0' && pass[0] <= '9' &&
+             pass[1] >= '0' && pass[1] <= '9' &&
+             pass[2] >= '0' && pass[2] <= '9' &&
+             pass[3] >= '0' && pass[3] <= '9');
+    return code;
+#undef ALPHABET_SIZE
+}
+
+#elif KEYSPACE == 4
+
+// random unicode junk [done]
+int coderoll(char *pass) {
+    // from https://en.bitcoin.it/wiki/Bitcoin_symbol
+    // http://fortawesome.github.io/Font-Awesome/icon/btc/
+#define ALPHABET_SIZE 10
+    static const char *alphabet[ALPHABET_SIZE] = {
+        "\xf0\x9f\x90\xb6",
+        "\xf0\x9f\x90\x95",
+        "\xf0\x9f\x90\xbe",
+        "\xf0\x9f\x92\xa9",
+        "\xe2\x98\x83",
+        "\xe2\x9c\xa1",
+        "\xe2\x9c\x88",
+        "\xf0\x9f\x8f\xa2",
+        "\xef\x85\x9a",  // '\uf15a'
+        "\xE0\xB8\xBF"  // '\u0e3f' (THAI CURRENCY SYMBOL BAHT)
+        // others? '\u21ce' cf http://www.reddit.com/r/Bitcoin/comments/1q7inm/this_paper_wallet_now_contains_0225_btc_and_is/cd9zfyx
+    };
+    static int code = 0;
 
     do {
         char *p = pass;
@@ -372,8 +404,141 @@ void coderoll4(char *pass) {
              pass[1] >= '0' && pass[1] <= '9' &&
              pass[2] >= '0' && pass[2] <= '9' &&
              pass[3] >= '0' && pass[3] <= '9');
-    if(number_tested % 10 == 0) {
-        printf("total tested: %lu, current code: %s [%d]\r\n",number_tested, pass, code);
+    return code;
+#undef ALPHABET_SIZE
+}
+
+#elif KEYSPACE == 5
+
+// dictionary words [done]
+int coderoll(char *pass) {
+#include "words.h"
+    static int index = 0;
+    int n = index++;
+    if (!words[n]) { exit(1); }
+    strcpy(pass, words[n]);
+    return index;
+}
+
+#elif KEYSPACE == 6
+/* incremental search into the upper reaches of unicode land */
+char *write_utf8(char *s, unsigned v) {
+    // xxx private-use characters? (6,400 + 65534 + 65534 of these)
+    // xxx format characters? (147 of these)
+    if (v <= 0x1F) { return NULL; } // control code
+    if (v>=0x7F && v<=0x9F) { return NULL; } // control code
+    if (v <= 0x7F) {
+        *s++ = v;
+    } else if (v <= 0x7FF) {
+        *s++ = 0xC0 | (v>>6);
+        *s++ = 0x80 | (v & 0x3F);
+    } else if (v <= 0xFFFF) {
+        if (v>=0xD800 && v<=0xDFFF) { return NULL; } // surrogate pairs
+        if (v>=0xFDD0 && v<=0xFDEF) { return NULL; } // non-character
+        if (v==0xFFFE || v==0xFFFF) { return NULL; } // non-character
+        *s++ = 0xE0 | (v>>12);
+        *s++ = 0x80 | ((v>>6) & 0x3F);
+        *s++ = 0x80 | (v & 0x3F);
+    } else if (v <= 0x1FFFFF) {
+        if ((v&0xFFFE) == 0xFFFE) { return NULL; } // non-character
+        *s++ = 0xF0 | (v>>18);
+        *s++ = 0x80 | ((v>>12) & 0x3F);
+        *s++ = 0x80 | ((v>>6) & 0x3F);
+        *s++ = 0x80 | (v & 0x3F);
+    } else {
+        exit(1); // no more characters
+    }
+    return s;
+}
+int coderoll(char *pass) {
+#define PLEN 4
+#define STARTVALUE 0
+    static unsigned code[PLEN] = { 0, 0, 0, 0 };
+    static int counter = 0;
+ again:
+    counter++;
+    // what's the highest value
+    unsigned max = 0;
+    int i, j;
+    for (i=0; i<PLEN; i++) {
+        if (code[i] > max) {
+            max = code[i];
+        }
+    }
+    // increment first digit which isn't at max
+    for (i=0; i<PLEN; i++) {
+        if (code[i] < max) {
+            if (++code[i] < max) {
+                goto done;
+            }
+            // newly at max, reset & go to next digit
+            code[i] = 0;
+        }
+    }
+    // ok, we need the next permutation of the MAX digits
+    // (the other digits should be zero at this point.)
+    // M - - -
+    // - M - -
+    // - - M -
+    // - - - M
+    // M M - -
+    // M - M -
+    // M - - M
+    // - M M -
+    // - M - M
+    // - - M M
+    // M M M -
+    // M M - M
+    // M - M M
+    // - M M M
+    // M M M M
+    unsigned skip = 0;
+    for (i=PLEN-1; i>=0; i--) {
+        if (code[i] == max) {
+            skip++;
+            if (i + 1 + skip <= PLEN) {
+                code[i++] = 0;
+                goto write_max;
+            }
+        }
+    }
+    // increase the number of m's
+    skip++; i = 0;
+    if (i + skip <= PLEN) { goto write_max; }
+    // increase max
+    max++; skip = 1;
+    printf("-- expanding key search to %d --\n", max);
+    if ((max+32) > 0x10FFFF) { exit(1); } // not likely!
+ write_max:
+    for ( ; i < PLEN; i++) {
+        code[i] = (skip && skip--) ? max : 0;
+    }
+ done:
+    // initial startup
+    if (counter < STARTVALUE) { goto again; }
+    // convert array of unicode values into utf8
+    char *p = pass;
+    for (i=0; i<PLEN; i++) {
+        p = write_utf8(p, code[i]+32); // skip control characters
+        if (!p) { goto again; /* bad unicode value, skip it! */ }
+    }
+    *p = 0;
+    return counter;
+}
+
+#else
+# error Must define a keyspace.
+#endif
+
+void coderoll_wrapper(char *pass) {
+    pthread_mutex_lock(&coderoll_mutex);
+    number_tested ++;
+
+    int index = coderoll(pass);
+
+   if(number_tested % 10 == 0) {
+        printf("total tested: %lu, current code: %s [%d]\r\n",number_tested, pass, index);
+        fflush(stdout);
     }
     pthread_mutex_unlock(&coderoll_mutex);
 }
@@ -383,7 +548,7 @@ void * crackthread(void * ctx) {
     char currentPass[17];
     pKey = (const char *)ctx;
     while(true) {
-        coderoll4(currentPass);
+        coderoll_wrapper(currentPass);
         if(!crack(pKey, currentPass)) {
             printf("found password: %s\r\n",currentPass);
             exit(0);
@@ -398,6 +563,7 @@ int main(int argc, char * argv[]) {
     printf("casascius bip38 private key brute forcer\r\n");
     OpenSSL_add_all_algorithms();
 
+#if 0
     /* takes a single command line arg. */
     /* if passed in, this is the starting string to check instead of AaAaA */
     if(argc > 1) {
@@ -405,6 +571,7 @@ int main(int argc, char * argv[]) {
     } else {
         strncpy(pass,"AaAaA",5);
     }
+#endif
 
     /* make sure the crack function is working */
     if(crack("6PfLGnQs6VZnrNpmVKfjotbnQuaJK4KZoPFrAjx1JMJUa1Ft8gnf5WxfKd","Satoshi")){
