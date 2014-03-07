@@ -262,30 +262,17 @@ long unsigned int number_tested;
 
 // 5-character password for AaAaJ test vector
 #if KEYSPACE == 0
-void coderoll(char * currentPass) {
+int coderoll(char * currentPass) {
     static char pass[6] = { "AaAaA" }; // the current password being checked
-    pass[4]++;
-    if(pass[4] > 'Z') {
-        pass[4] = 'A';
-        pass[3]++;
-        if(pass[3] > 'z') {
-            pass[3] = 'a';
-            pass[2]++;
-            if(pass[2] > 'Z') {
-                pass[2] = 'A';
-                pass[1]++;
-                if(pass[1] > 'z') {
-                    pass[1] = 'a';
-                    pass[0]++;
-                    if(pass[0] > 'Z') {
-                        pass[0] = 'A';
-                        pass[1] = 'a';
-                        pass[2] = 'A';
-                        pass[3] = 'a';
-                        pass[4] = 'A';
-                    }
-                }
-            }
+    int i;
+    for (i=4; i>=0; i--) {
+        pass[i]++;
+        if (i&1) {
+            if (pass[i] <= 'z') break;
+            pass[i] = 'a';
+        } else {
+            if (pass[i] <= 'Z') break;
+            pass[i] = 'A';
         }
     }
     strcpy(currentPass,pass);
@@ -295,7 +282,7 @@ void coderoll(char * currentPass) {
 #elif KEYSPACE == 1
 
 // numeric pins [done]
-void coderoll(char *pass) {
+int coderoll(char *pass) {
     static int pin = 0000;
     // make a random 4-character password
     sprintf(pass, "%04d", pin++);
@@ -306,7 +293,8 @@ void coderoll(char *pass) {
 #elif KEYSPACE == 2
 
 // one byte printable UTF-8 -- that is, 32 <= c <= 127
-void coderoll(char *pass) {
+// (keyspace 6 does this better)
+int coderoll(char *pass) {
     static unsigned char pin[] = { ' ', ' ', '%', 'o', 0 };
     strcpy(pass, pin);
     do {
@@ -331,8 +319,8 @@ void coderoll(char *pass) {
 
 #elif KEYSPACE == 3
 
-// a bitcoin quantity
-void coderoll(char *pass) {
+// a bitcoin quantity [done]
+int coderoll(char *pass) {
     // from https://en.bitcoin.it/wiki/Bitcoin_symbol
     // http://fortawesome.github.io/Font-Awesome/icon/btc/
 #define ALPHABET_SIZE 23
@@ -410,9 +398,9 @@ int coderoll(char *pass) {
 
 #elif KEYSPACE == 5
 
-// dictionary words [done]
+// dictionary words, doge words [done]
 int coderoll(char *pass) {
-#if 0
+#if 1
 # include "words.h"
 #else
 # include "dogewords.h"
@@ -426,6 +414,7 @@ int coderoll(char *pass) {
 
 #elif KEYSPACE == 6
 /* incremental search into the upper reaches of unicode land */
+#define STARTVALUE 0
 char *write_utf8(char *s, unsigned v) {
     // xxx private-use characters? (6,400 + 65534 + 65534 of these)
     // xxx format characters? (147 of these)
@@ -456,7 +445,6 @@ char *write_utf8(char *s, unsigned v) {
 }
 int coderoll(char *pass) {
 #define PLEN 4
-#define STARTVALUE 0
     static unsigned code[PLEN] = { 0, 0, 0, 0 };
     static int counter = 0;
  again:
@@ -593,6 +581,9 @@ int main(int argc, char * argv[]) {
     //const char pKey[] = "6PfTokDpyZUYwaVg37aZZ67MvD1bTyrCyjrjacz1XAgfVndWjZSsxLuDrE"; // official Casascius contest key
     const char pKey[] = "6PfQoEzqbz3i2LpHibYnwAspwBwa3Nei1rU7UH9yzfutXT7tyUzV8aYAvG"; // reddit contest key
     //const char pKey[] = "6PfMxA1n3cqYarHoDqPRPLpBBJGWLDY1qX94z8Qyjg7XAMNZJMvHLqAMyS"; // test key that decrypts with AaAaJ
+    //const char pKey[] = "6PfLk3DLTTXwrK6T8PJuLDtRek2WNmdPCd4ht6ShBJ823MBXVqC4a9VEew"; // 4 *digit* key: http://www.reddit.com/r/Bitcoin/comments/1zkcya/lets_see_how_long_it_takes_to_crack_a_4_digit/cfw79rw
+
+    printf("Attempting to crack:\n%s\n", pKey);
 
     pthread_mutex_t coderoll_mutex = PTHREAD_MUTEX_INITIALIZER;
 
