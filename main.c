@@ -22,7 +22,7 @@ Repurposed for reddit contest:
 #include "ccoin/key.h"
 #include "ccoin/address.h"
 
-#define NUM_THREADS 8
+#define NUM_THREADS 16
 
 void print_hex(char * hex, size_t len) {
     int i;
