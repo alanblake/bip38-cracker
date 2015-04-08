@@ -202,11 +202,11 @@ int crack(const char * pKey, char * pKey_pass) {
 
     // we have a private key! check hash
 
-
+/*
     printf("have private key: ");
     print_hex(finalKey, 32);
     printf("%s", "\r\n");
-
+*/
 
     // turn it into a real address
     struct bp_key wallet;
