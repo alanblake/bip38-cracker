@@ -274,7 +274,7 @@ void coderoll(char * currentPass) {
     pthread_mutex_unlock(&coderoll_mutex);
 }
 
-const char pKey[] = "6PfLGnQs6VZnrNpmVKfjotbnQuaJK4KZoPFrAjx1JMJUa1Ft8gnf5WxfKd"; // reddit contest key
+const char pKey[256];
 
 void * crackthread(void * ctx) {
     char currentPass[256];
@@ -291,6 +291,14 @@ void * crackthread(void * ctx) {
 }
 
 int main(int argc, char * argv[]) {
+    if(argc != 2) {
+        fprintf(stderr,"Usage: crack 6Pf...\n");
+        fprintf(stderr,"Passwords to try are read from stdin, one per line.\n");
+        exit(1);
+    }
+
+    strcpy(pKey, argv[1]);
+
     int i;
     pthread_t threads[NUM_THREADS];
     number_tested = 0;
@@ -298,7 +306,7 @@ int main(int argc, char * argv[]) {
     OpenSSL_add_all_algorithms();
 
     /* make sure the crack function is working */
-    if(crack("6PfLGnQs6VZnrNpmVKfjotbnQuaJK4KZoPFrAjx1JMJUa1Ft8gnf5WxfKd","Satoshi")){
+    if(crack("6PfLGnQs6VZnrNpmVKfjotbnQuaJK4KZoPFrAjx1JMJUa1Ft8gnf5WxfKd","Satoshi")) {
     	fprintf(stderr,"the crack function is not working, sorry.\n");
         exit(1);
     }
