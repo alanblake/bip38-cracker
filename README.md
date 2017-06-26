@@ -24,9 +24,13 @@ make
 
 The cracker takes the BIP38 encrypted key as first argument, and a list of passwords to try from stdin, one per line.
 
-When the private key is recovered, the cracker will send a hardcoded amount of coins from it to a hardcoded address, using curl and blockchain API. I recommend you change the address to yours and set the amount to all the funds in the address minus the txfee.
+~~When the private key is recovered, the cracker will send a hardcoded amount of coins from it to a hardcoded address, using curl and blockchain API. I recommend you change the address to yours and set the amount to all the funds in the address minus the txfee.~~
 
 Thread count is hardcoded too, set it to your CPU count for maximum performance.
+
+To crack other currencys update #defines in main.
+
+```
 
 ### Examples
 - Crack from a wordlist

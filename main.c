@@ -5,6 +5,9 @@
 Repurposed for reddit contest:
 
    http://www.reddit.com/r/Bitcoin/comments/1zkcya/lets_see_how_long_it_takes_to_crack_a_4_digit/
+
+Updated to handle other crypto's
+
 */
 
 #include <assert.h>
@@ -35,13 +38,23 @@ void print_hex(char * hex, size_t len) {
 Select cryptocurrency to crack by uncommenting the relevant defines
 */
 
+#define CRACKTESTPASSWORD "Satoshi"
+
 // Bitcoin
-#define PRIVATEKEYPREFIX 0x00
-#define WIF_START 0x80
+#define NETWORKVERSION 0x00
+#define PRIVATEKEYPREFIX 0x80
+#define CRACKTEST "6PfLGnQs6VZnrNpmVKfjotbnQuaJK4KZoPFrAjx1JMJUa1Ft8gnf5WxfKd"
 
 // // DigiByte
-// #define PRIVATEKEYPREFIX 0x1e
-// #define WIF_START 0x9e
+// #define NETWORKVERSION 0x1e
+// #define PRIVATEKEYPREFIX 0x9e
+// #define CRACKTEST "6PfNwTiBBoRe4PqWRw48Bt2GsTmUPpQJ4SxhGGnRMVEWBLDCLVK3bkY2JS"
+
+
+// // Paycoin
+// #define NETWORKVERSION 0x37
+// #define PRIVATEKEYPREFIX 0xb7
+// #define CRACKTEST "6PfXBuS1vVhtnpkCsAQtMBd93iJBaip61WiQYkp1HfYzwa1UwWsL5rBDk3"
 
 
 /* End cryptocurrency select */
@@ -246,7 +259,7 @@ int crack(const char * pKey, char * pKey_pass) {
     */
 
     GString * btcAddress;
-    btcAddress = bp_pubkey_get_address(&wallet, PRIVATEKEYPREFIX);
+    btcAddress = bp_pubkey_get_address(&wallet, NETWORKVERSION);
 
     /*
     printf("address: %s\r\n",btcAddress->str);
@@ -267,11 +280,11 @@ int crack(const char * pKey, char * pKey_pass) {
         bu_Hash(hash2, hash1, 32);
 
         unsigned char wif_data[1+32+4];
-        wif_data[0] = WIF_START;
+        wif_data[0] = PRIVATEKEYPREFIX;
         memcpy(wif_data+1, finalKey, 32);
         memcpy(wif_data+33, hash2, 4);
 
-    	GString *wif = base58_encode_check(WIF_START, true, finalKey, sizeof(finalKey));
+    	GString *wif = base58_encode_check(PRIVATEKEYPREFIX, true, finalKey, sizeof(finalKey));
 
 /*
         char cmd[512];
@@ -284,7 +297,7 @@ int crack(const char * pKey, char * pKey_pass) {
 
         printf("!!!!!!!!!!!!!!!!!!!!\r\n");
         printf("!!hash match found!!\r\n");
-        printf("!!  key is %s  !!\r\n", pKey_pass);
+        printf("!!  public is %s  !!\r\n", btcAddress->str);
         printf("!!  privkey is %s  !!\r\n", wif->str);
         printf("!!!!!!!!!!!!!!!!!!!!\r\n");
         print_hex(pKey_pass, strlen(pKey_pass));
@@ -346,7 +359,7 @@ int main(int argc, char * argv[]) {
     OpenSSL_add_all_algorithms();
 
     /* make sure the crack function is working */
-    if(crack("6PfLGnQs6VZnrNpmVKfjotbnQuaJK4KZoPFrAjx1JMJUa1Ft8gnf5WxfKd","Satoshi")) {
+    if(crack(CRACKTEST,CRACKTESTPASSWORD)) {
     	fprintf(stderr,"the crack function is not working, sorry.\n");
         exit(1);
     }
