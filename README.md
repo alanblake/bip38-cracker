@@ -22,25 +22,23 @@ make
 
 ## Usage
 
-The cracker takes the BIP38 encrypted key as first argument, and a list of passwords to try from stdin, one per line.
-
-~~When the private key is recovered, the cracker will send a hardcoded amount of coins from it to a hardcoded address, using curl and blockchain API. I recommend you change the address to yours and set the amount to all the funds in the address minus the txfee.~~
+The cracker takes a currency id as the first argument, the BIP38 encrypted key as the second argument, and a list of passwords to try from stdin, one per line.
 
 Thread count is hardcoded too, set it to your CPU count for maximum performance.
 
-To crack other currencys update #defines in main.
+Pass the currency id as a parameter. btc, dgb, xpy are supported. Its simple to add further currencys.
 
 ```
 
 ### Examples
-- Crack from a wordlist
+- Crack bitcoin key from a wordlist
 ```bash
-./cracker 6Pf... < wordlist.txt
+./cracker btc 6Pf... < wordlist.txt
 ```
 - Try all lowercase 5 letter passwords (uses gen.cpp to generate them all)
 ```bash
 g++ gen.cpp -O2 -o gen
-./gen aaaaa | ./cracker 6Pf...
+./gen aaaaa | ./cracker btc 6Pf...
 ```
 
 ## Note
