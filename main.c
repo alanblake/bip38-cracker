@@ -41,6 +41,8 @@ void print_hex(char * hex, size_t len) {
 #define ADDRESSHASH_SIZE 4
 #define OWNERSALT_SIZE 8
 
+int coin_select;
+
 typedef struct COIN_ATTR {
   char coin_abbrev[3];
   int network_version;
@@ -54,8 +56,19 @@ COIN_ATTR coins[]={
     { "xpy", 0x37, 0xb7, "6PfXBuS1vVhtnpkCsAQtMBd93iJBaip61WiQYkp1HfYzwa1UwWsL5rBDk3" }
 };
 
+int find_coin(struct COIN_ATTR *ca, const char *coin){
+  {
+     for (size_t i = 0; i < sizeof(ca); ++i)
+     {
+        if (strncmp(ca[i].coin_abbrev, coin, 3) == 0)
+            return i;
+     }
+     return -1;
+  }
+}
+
+
 #define CRACKTESTPASSWORD "Satoshi"
-#define COINSELECT 2
 
 int crack(const char * pKey, char * pKey_pass) {
     int i;
@@ -250,7 +263,7 @@ int crack(const char * pKey, char * pKey_pass) {
     */
 
     GString * btcAddress;
-    btcAddress = bp_pubkey_get_address(&wallet, coins[COINSELECT].network_version);
+    btcAddress = bp_pubkey_get_address(&wallet, coins[coin_select].network_version);
 
     /*
     printf("address: %s\r\n",btcAddress->str);
@@ -271,11 +284,11 @@ int crack(const char * pKey, char * pKey_pass) {
         bu_Hash(hash2, hash1, 32);
 
         unsigned char wif_data[1+32+4];
-        wif_data[0] = coins[COINSELECT].private_key_prefix;
+        wif_data[0] = coins[coin_select].private_key_prefix;
         memcpy(wif_data+1, finalKey, 32);
         memcpy(wif_data+33, hash2, 4);
 
-    	GString *wif = base58_encode_check(coins[COINSELECT].private_key_prefix, true, finalKey, sizeof(finalKey));
+    	GString *wif = base58_encode_check(coins[coin_select].private_key_prefix, true, finalKey, sizeof(finalKey));
 
 /*
         char cmd[512];
@@ -318,6 +331,7 @@ void coderoll(char * currentPass) {
     pthread_mutex_unlock(&coderoll_mutex);
 }
 
+
 char pKey[256];
 
 void * crackthread(void * ctx) {
@@ -334,14 +348,17 @@ void * crackthread(void * ctx) {
     }
 }
 
+
 int main(int argc, char * argv[]) {
-    if(argc != 2) {
-        fprintf(stderr,"Usage: crack 6Pf...\n");
+    if(argc != 3) {
+        fprintf(stderr,"Usage: crack btc 6Pf...\n");
         fprintf(stderr,"Passwords to try are read from stdin, one per line.\n");
         exit(1);
     }
+    coin_select = find_coin(coins, argv[1]);
 
-    strcpy(pKey, argv[1]);
+
+    strcpy(pKey, argv[2]);
 
     int i;
     pthread_t threads[NUM_THREADS];
@@ -350,13 +367,13 @@ int main(int argc, char * argv[]) {
     OpenSSL_add_all_algorithms();
 
     /* make sure the crack function is working */
-    if(crack(coins[COINSELECT].crack_test,CRACKTESTPASSWORD)) {
+    if(crack(coins[coin_select].crack_test,CRACKTESTPASSWORD)) {
     	fprintf(stderr,"the crack function is not working, sorry.\n");
         exit(1);
     }
 
 
-    printf("Attempting to crack:\n%s\n", pKey);
+    printf("Attempting to crack: %s\n%s\n",coins[coin_select].coin_abbrev, pKey);
 
     pthread_mutex_t coderoll_mutex = PTHREAD_MUTEX_INITIALIZER;
 
