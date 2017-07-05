@@ -34,37 +34,28 @@ void print_hex(char * hex, size_t len) {
     }
 }
 
-/*
-Select cryptocurrency to crack by uncommenting the relevant defines
-*/
-
-#define CRACKTESTPASSWORD "Satoshi"
-
-// Bitcoin
-#define NETWORKVERSION 0x00
-#define PRIVATEKEYPREFIX 0x80
-#define CRACKTEST "6PfLGnQs6VZnrNpmVKfjotbnQuaJK4KZoPFrAjx1JMJUa1Ft8gnf5WxfKd"
-
-// // DigiByte
-// #define NETWORKVERSION 0x1e
-// #define PRIVATEKEYPREFIX 0x9e
-// #define CRACKTEST "6PfNwTiBBoRe4PqWRw48Bt2GsTmUPpQJ4SxhGGnRMVEWBLDCLVK3bkY2JS"
-
-
-// // Paycoin
-// #define NETWORKVERSION 0x37
-// #define PRIVATEKEYPREFIX 0xb7
-// #define CRACKTEST "6PfXBuS1vVhtnpkCsAQtMBd93iJBaip61WiQYkp1HfYzwa1UwWsL5rBDk3"
-
-
-/* End cryptocurrency select */
-
 #define PASSFACTOR_SIZE 32
 #define PASSPHRASE_MAGIC_SIZE 8
 #define PASSPHRASE_SIZE (PASSPHRASE_MAGIC_SIZE + OWNERSALT_SIZE + 33)
 #define DERIVED_SIZE 64
 #define ADDRESSHASH_SIZE 4
 #define OWNERSALT_SIZE 8
+
+typedef struct COIN_ATTR {
+  char coin_abbrev[3];
+  int network_version;
+  int private_key_prefix;
+  char crack_test[58];
+} COIN_ATTR;
+
+COIN_ATTR coins[]={
+    { "btc", 0x00, 0x80, "6PfLGnQs6VZnrNpmVKfjotbnQuaJK4KZoPFrAjx1JMJUa1Ft8gnf5WxfKd" },
+    { "dgb", 0x1e, 0x9e, "6PfNwTiBBoRe4PqWRw48Bt2GsTmUPpQJ4SxhGGnRMVEWBLDCLVK3bkY2JS" },
+    { "xpy", 0x37, 0xb7, "6PfXBuS1vVhtnpkCsAQtMBd93iJBaip61WiQYkp1HfYzwa1UwWsL5rBDk3" }
+};
+
+#define CRACKTESTPASSWORD "Satoshi"
+#define COINSELECT 2
 
 int crack(const char * pKey, char * pKey_pass) {
     int i;
@@ -259,7 +250,7 @@ int crack(const char * pKey, char * pKey_pass) {
     */
 
     GString * btcAddress;
-    btcAddress = bp_pubkey_get_address(&wallet, NETWORKVERSION);
+    btcAddress = bp_pubkey_get_address(&wallet, coins[COINSELECT].network_version);
 
     /*
     printf("address: %s\r\n",btcAddress->str);
@@ -280,11 +271,11 @@ int crack(const char * pKey, char * pKey_pass) {
         bu_Hash(hash2, hash1, 32);
 
         unsigned char wif_data[1+32+4];
-        wif_data[0] = PRIVATEKEYPREFIX;
+        wif_data[0] = coins[COINSELECT].private_key_prefix;
         memcpy(wif_data+1, finalKey, 32);
         memcpy(wif_data+33, hash2, 4);
 
-    	GString *wif = base58_encode_check(PRIVATEKEYPREFIX, true, finalKey, sizeof(finalKey));
+    	GString *wif = base58_encode_check(coins[COINSELECT].private_key_prefix, true, finalKey, sizeof(finalKey));
 
 /*
         char cmd[512];
@@ -359,7 +350,7 @@ int main(int argc, char * argv[]) {
     OpenSSL_add_all_algorithms();
 
     /* make sure the crack function is working */
-    if(crack(CRACKTEST,CRACKTESTPASSWORD)) {
+    if(crack(coins[COINSELECT].crack_test,CRACKTESTPASSWORD)) {
     	fprintf(stderr,"the crack function is not working, sorry.\n");
         exit(1);
     }
